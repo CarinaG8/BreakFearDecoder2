@@ -11,8 +11,44 @@ export default defineConfig(({ mode }) => {
       },
       plugins: [react()],
       define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+        'process.env.async function askQuestion(question: string) {
+  const res = await fetch("/.netlify/functions/decoder", {
+    method: "POST",
+    body: JSON.stringify({ question }),
+  });
+
+  const data = await res.json();
+  return data;
+}
+': JSON.stringify(env.async function askQuestion(question: string) {
+  const res = await fetch("/.netlify/functions/decoder", {
+    method: "POST",
+    body: JSON.stringify({ question }),
+  });
+
+  const data = await res.json();
+  return data;
+}
+),
+        'process.env.async function askQuestion(question: string) {
+  const res = await fetch("/.netlify/functions/decoder", {
+    method: "POST",
+    body: JSON.stringify({ question }),
+  });
+
+  const data = await res.json();
+  return data;
+}
+': JSON.stringify(env.async function askQuestion(question: string) {
+  const res = await fetch("/.netlify/functions/decoder", {
+    method: "POST",
+    body: JSON.stringify({ question }),
+  });
+
+  const data = await res.json();
+  return data;
+}
+)
       },
       resolve: {
         alias: {
