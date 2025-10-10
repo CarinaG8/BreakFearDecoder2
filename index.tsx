@@ -1,4 +1,3 @@
-
 import React, { useState, FormEvent, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { GoogleGenAI, Type } from '@google/genai';
@@ -23,103 +22,82 @@ const WelcomePage = ({ onProceed }: { onProceed: () => void }) => (
 );
 
 const DisclaimerPage = ({ onProceed }: { onProceed: () => void }) => {
-  const [agreed, setAgreed] = useState(false);
-  const [signature, setSignature] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [email, setEmail] = useState('');
   const [date, setDate] = useState('');
+  const [agreed, setAgreed] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (!signature.trim() || !date.trim()) {
-      setValidationError('Please provide your signature and the date.');
+    if (!firstName.trim() || !email.trim() || !date.trim()) {
+      setValidationError('Please provide your name, email, and the date.');
       return;
     }
     if (!agreed) {
-        setValidationError('You must agree to the terms to proceed.');
-        return;
+      setValidationError('You must agree to the terms to proceed.');
+      return;
     }
     setValidationError(null);
+
+    // Save the name/email/date for later use
+    localStorage.setItem('disclaimerName', firstName);
+    localStorage.setItem('disclaimerEmail', email);
+    localStorage.setItem('disclaimerDate', date);
+
     onProceed();
   };
 
-
   return (
     <div className="page-content">
-      <h2 className="header">Disclaimer & Indemnity</h2>
+      <h2 className="header">Disclaimer & Consent</h2>
       <div className="disclaimer-box">
         <p>BreakFearFindFreedom LLC is committed to offering support for personal growth and insight through the BreakFear Decoder. By proceeding, you acknowledge the following:</p>
-        <p><strong>Personal Responsibility:</strong> The content provided is for personal insight and educational purposes only. BreakFearFindFreedom LLC does not provide medical, psychological, or therapeutic advice. Always consult with a licensed professional for medical, emotional, or mental health concerns.</p>
-        <p><strong>Liability Clause:</strong> By using the BreakFear Decoder, you agree that BreakFearFindFreedom LLC, its team, and affiliates are not liable for any direct or indirect consequences of actions taken based on the insights or advice provided. You take full responsibility for your own decisions and actions.</p>
-        <p><strong>Safety Notice:</strong> Please ensure that you are in a safe and calm environment when using the BreakFear Decoder. Avoid performing any tasks while walking, driving, or engaging in any activities that may require full attention.</p>
-        <p><strong>No Substitute for Professional Advice:</strong> The BreakFear Decoder provides guidance based on reflection, mindfulness, and self-exploration. It is not a substitute for professional advice, therapy, or other interventions that may be necessary for your well-being.</p>
-        <p><strong>Consent:</strong> By clicking "Agree," you confirm that you understand the purpose of this tool and the potential risks involved in using it. You also agree to our Terms of Service and Privacy Policy.</p>
-        <p><strong>Confidentiality and Privacy</strong></p>
-        <p>Your responses, name, and email are kept strictly confidential. BreakFearFindFreedom LLC will not share your personal information with any third parties. Collected emails are used only for delivering your Decoder insights and relevant communications from BreakFearFindFreedom. By signing below, you acknowledge understanding and agreement with this privacy policy.</p>
+        <p><strong>Personal Responsibility:</strong> This content is for personal insight only. Consult a licensed professional for medical, emotional, or mental health concerns.</p>
+        <p><strong>Consent:</strong> By clicking "Agree," you confirm that you understand the purpose of this tool and the potential risks.</p>
+        <p><strong>Confidentiality:</strong> Your name, email, and date will be kept private and used only for delivering your Decoder insights and relevant communications.</p>
       </div>
 
-       <form 
-        onSubmit={handleSubmit}
-        style={{ 
-          width: '100%', 
-          display: 'flex', 
-          flexDirection: 'column', 
-          alignItems: 'center',
-          marginTop: '1rem' 
-        }}
-        noValidate
-      >
-        <div className="form-group" style={{width: '100%'}}>
-          <label htmlFor="signature">Signature</label>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }} noValidate>
+        <input
+          type="text"
+          placeholder="First Name"
+          value={firstName}
+          onChange={(e) => setFirstName(e.target.value)}
+          required
+        />
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          required
+        />
+        <div>
           <input
-            id="signature"
-            className="form-input"
-            type="text"
-            value={signature}
-            onChange={(e) => setSignature(e.target.value)}
-            placeholder="Type your full name"
-            aria-required="true"
-          />
-        </div>
-        <div className="form-group" style={{width: '100%'}}>
-          <label htmlFor="date">Date</label>
-          <input
-            id="date"
-            className="form-input"
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            aria-required="true"
-          />
-        </div>
-
-        <div className="checkbox-container">
-          <input 
-            id="agree-checkbox" 
-            type="checkbox" 
+            id="agree-checkbox"
+            type="checkbox"
             checked={agreed}
-            onChange={(e) => setAgreed(e.target.checked)} 
-            aria-labelledby="agree-label"
+            onChange={(e) => setAgreed(e.target.checked)}
           />
-          <label id="agree-label" htmlFor="agree-checkbox">I have read and agree to the terms.</label>
+          <label htmlFor="agree-checkbox">I have read and agree to the terms.</label>
         </div>
 
-        {validationError && <div className="error-message" role="alert" style={{marginTop: '1rem', width: '100%'}}>{validationError}</div>}
-        
-        <button 
-          className="btn" 
-          type="submit"
-        >
-          Open the Portal 🌌
-        </button>
+        {validationError && <div className="error-message">{validationError}</div>}
+
+        <button className="btn" type="submit">Open the Portal 🌌</button>
       </form>
     </div>
   );
 };
 
 interface FormData {
-  firstName: string;
-  lastName: string;
-  email: string;
   question: string;
 }
 
@@ -128,32 +106,22 @@ const FormPage = ({
     successMessage,
     isSubscribed,
     hasUsedFreeQuery,
-    singleCredit
+    singleCredit,
+    firstName
 }: { 
     onProceed: (data: FormData) => void; 
     successMessage?: string | null;
     isSubscribed: boolean; 
     hasUsedFreeQuery: boolean;
     singleCredit: boolean;
+    firstName: string;
 }) => {
-  const [formData, setFormData] = useState<FormData>({
-    firstName: '',
-    lastName: '',
-    email: '',
-    question: ''
-  });
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { id, value } = e.target;
-    setFormData(prev => ({...prev, [id]: value}));
-  }
+  const [question, setQuestion] = useState('');
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (!formData.question.trim() || !formData.firstName.trim() || !formData.email.trim()) {
-      return;
-    }
-    onProceed(formData);
+    if (!question.trim()) return;
+    onProceed({ question });
   };
 
   const buttonText = isSubscribed || singleCredit
@@ -162,55 +130,18 @@ const FormPage = ({
     ? 'Enter the Decoder Portal (First Insight Free)'
     : 'Unlock Your Hidden Message ($7)';
 
-
   return (
     <div className="page-content">
       {successMessage && <div className="success-message" role="status">{successMessage}</div>}
-      <h2 className="header">What fear or sticky place would you like to bring into the Decoder?</h2>
+      <h2 className="header">Hello, {firstName}. What fear or sticky place would you like to bring into the Decoder?</h2>
       <form onSubmit={handleSubmit} style={{ width: '100%' }}>
         <div className="form-group">
-          <label htmlFor="firstName">First Name</label>
-          <input 
-            id="firstName" 
-            className="form-input"
-            type="text" 
-            value={formData.firstName}
-            onChange={handleChange}
-            required
-            aria-required="true"
-          />
-        </div>
-        <div className="form-group">
-          <label htmlFor="lastName">Last Name</label>
-          <input 
-            id="lastName" 
-            className="form-input"
-            type="text" 
-            value={formData.lastName}
-            onChange={handleChange}
-            required
-            aria-required="true"
-          />
-        </div>
-        <div className="form-group">
-          <label htmlFor="email">Email</label>
-          <input 
-            id="email" 
-            className="form-input"
-            type="email" 
-            value={formData.email}
-            onChange={handleChange}
-            required
-            aria-required="true"
-          />
-        </div>
-        <div className="form-group">
-          <label htmlFor="question">What fear or sticky place would you like to bring into the Decoder?</label>
+          <label htmlFor="question">Your Question</label>
           <textarea 
             id="question"
             className="form-textarea"
-            value={formData.question}
-            onChange={handleChange}
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
             required
             aria-required="true"
           ></textarea>
@@ -260,7 +191,6 @@ const PaymentPage = () => {
       </div>
   );
 };
-
 
 const DecoderResponsePage = ({ 
     response, 
@@ -329,7 +259,6 @@ const DecoderResponsePage = ({
   </div>
 );
 
-
 const App = () => {
   const [page, setPage] = useState<Page>('welcome');
   const [isLoading, setIsLoading] = useState(false);
@@ -357,6 +286,7 @@ const App = () => {
     return localStorage.getItem('hasUsedFreeQuery') === 'true';
   });
 
+  const disclaimerName = localStorage.getItem('disclaimerName') || '';
 
   const onDisclaimerProceed = () => {
     localStorage.setItem('disclaimerAgreed', 'true');
@@ -368,7 +298,7 @@ const App = () => {
     setError(null);
     setDecoderResponse(null);
     setIsHarmfulQuestion(false);
-    setUserName(data.firstName);
+    setUserName(disclaimerName);
     setPage('decoderResponse');
 
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
@@ -376,34 +306,21 @@ const App = () => {
     try {
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: `User's First Name: ${data.firstName}. User's Question: "${data.question}"`,
+        contents: `User's First Name: ${disclaimerName}. User's Question: "${data.question}"`,
         config: {
             systemInstruction: `You are the BreakFear Decoder. Your task is to analyze a user's question for harmful content and provide a supportive, magical, and varied response if it's safe.
 
 First, check the user's question for harmful content like self-harm, violence, abuse, or severe distress. If detected, your entire JSON response must be '{"isHarmful": true}'.
 
-If the question is safe, provide a JSON response with 'isHarmful' set to false, and include 'insight', 'task', and 'thoughtProvokingQuestion'.
-- 'insight': Around 150 words. Be transformative, practical, and unique. Avoid clichés. Address the user by their first name.
-- 'task': A short, actionable "micro-task". Rotate through different categories:
-  - Imagery/Visualization: Guide them to imagine scenes or symbols.
-  - Creative Expression: Invite them to write a sentence, doodle, or create a metaphor.
-  - Perspective Shifts: Offer a reframe (e.g., fear as a teacher).
-  - Micro-Action: Suggest a tiny real-world experiment.
-  - Storytelling: Weave their fear into a short parable.
-  - Body Wisdom: Gentle awareness of posture or breath (use sparingly).
-  - Connection: Suggest a safe conversation or reflection.
-  - Do NOT repeat the same type of task (e.g., mindfulness) in every response. Make it surprising and magical.
-- 'thoughtProvokingQuestion': A single, concise question for reflection.
-
-Your final output must be a valid JSON object.`,
+If the question is safe, provide a JSON response with 'isHarmful' set to false, and include 'insight', 'task', and 'thoughtProvokingQuestion'.`,
             responseMimeType: "application/json",
             responseSchema: {
                 type: Type.OBJECT,
                 properties: {
-                    isHarmful: { type: Type.BOOLEAN, description: "True if the question contains harmful content, otherwise false." },
-                    insight: { type: Type.STRING, description: "The transformative insight for the user. Only present if isHarmful is false." },
-                    task: { type: Type.STRING, description: "A simple, actionable mindfulness task. Only present if isHarmful is false." },
-                    thoughtProvokingQuestion: { type: Type.STRING, description: "A single question for deeper reflection. Only present if isHarmful is false." },
+                    isHarmful: { type: Type.BOOLEAN },
+                    insight: { type: Type.STRING },
+                    task: { type: Type.STRING },
+                    thoughtProvokingQuestion: { type: Type.STRING },
                 },
                 required: ["isHarmful"],
             },
@@ -442,9 +359,7 @@ Your final output must be a valid JSON object.`,
         const urlParams = new URLSearchParams(window.location.search);
         const purchaseType = urlParams.get('purchase');
 
-        if (!purchaseType) {
-            return;
-        }
+        if (!purchaseType) return;
         
         window.history.replaceState({}, document.title, window.location.pathname);
         
@@ -508,6 +423,7 @@ Your final output must be a valid JSON object.`,
                   isSubscribed={isSubscribed}
                   hasUsedFreeQuery={hasUsedFreeQuery}
                   singleCredit={singleCredit}
+                  firstName={disclaimerName}
                 />;
       case 'payment':
         return <PaymentPage />;
