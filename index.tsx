@@ -1,4 +1,3 @@
-
 import React, { useState, FormEvent, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { GoogleGenAI, Type } from '@google/genai';
@@ -15,10 +14,7 @@ interface DecoderResponse {
 const WelcomePage = ({ onProceed }: { onProceed: () => void }) => (
   <div className="page-content">
     <h1 className="title">Welcome to the BreakFear Decoder</h1>
-    <div className="portal-container">
-      <div className="portal"></div>
-    </div>
-    <p>Your transformation begins here. Take a deep breath and prepare to step through the portal into a world of insights.</p>
+    <p>Your transformation begins here. Take a deep breath and prepare to step into a world of insights.</p>
     <button className="btn" onClick={onProceed}>Begin</button>
   </div>
 );
@@ -32,20 +28,47 @@ const DisclaimerPage = ({ onProceed }: { onProceed: () => void }) => {
   const [date, setDate] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  const handleSubmit = (e: FormEvent) => {
+  const [source, setSource] = useState('unknown');
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const src = urlParams.get('source') || 'unknown';
+    setSource(src);
+  }, []);
+
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!firstName.trim() || !lastName.trim() || !email.trim() || !date.trim()) {
       setValidationError('Please complete all fields.');
       return;
     }
     if (!agreed) {
-        setValidationError('You must agree to the terms to proceed.');
-        return;
+      setValidationError('You must agree to the terms to proceed.');
+      return;
     }
     setValidationError(null);
+
+    // Store info in localStorage for question page
     localStorage.setItem('userFirstName', firstName);
     localStorage.setItem('userLastName', lastName);
     localStorage.setItem('userEmail', email);
+    localStorage.setItem('userSource', source);
+
+    // Call Google AI to initialize decoder if needed
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `User's First Name: ${firstName}. Disclaimer agreed.`,
+        config: {
+          systemInstruction: "Initialize decoder for user.",
+          responseMimeType: "application/json"
+        }
+      });
+    } catch (err) {
+      console.error('Google AI initialization failed', err);
+    }
+
     onProceed();
   };
 
@@ -54,78 +77,28 @@ const DisclaimerPage = ({ onProceed }: { onProceed: () => void }) => {
       <h2 className="header">Disclaimer & Consent</h2>
       <div className="disclaimer-box">
         <p>BreakFearFindFreedom LLC is committed to offering support for personal growth and insight through the BreakFear Decoder. By proceeding, you acknowledge the following:</p>
-        <p><strong>Personal Responsibility:</strong> The content provided is for personal insight and educational purposes only. BreakFearFindFreedom LLC does not provide medical, psychological, or therapeutic advice. Always consult with a licensed professional for medical, emotional, or mental health concerns.</p>
-        <p><strong>Liability Clause:</strong> By using the BreakFear Decoder, you agree that BreakFearFindFreedom LLC, its team, and affiliates are not liable for any direct or indirect consequences of actions taken based on the insights or advice provided. You take full responsibility for your own decisions and actions.</p>
-        <p><strong>Safety Notice:</strong> Please ensure that you are in a safe and calm environment when using the BreakFear Decoder. Avoid performing any tasks while walking, driving, or engaging in any activities that may require full attention.</p>
-        <p><strong>Consent:</strong> By clicking "Agree," you confirm that you understand the purpose of this tool and the potential risks involved in using it. You also agree to our Terms of Service and Privacy Policy.</p>
+        <ul>
+          <li><strong>Personal Responsibility:</strong> Content is for insight and educational purposes only. Always consult licensed professionals for medical, emotional, or mental health concerns.</li>
+          <li><strong>Liability:</strong> You accept full responsibility for your decisions and actions. BreakFearFindFreedom LLC and its affiliates are not liable for outcomes.</li>
+          <li><strong>Safety:</strong> Ensure a calm environment. Avoid unsafe activities while using the tool.</li>
+          <li><strong>Emergency Resources:</strong> If in distress, contact 911 or a licensed professional. You can also reach out to our <a href="https://www.skool.com/@carina-ghionzoli-7880" target="_blank" rel="noopener noreferrer">BreakFearFindFreedom community</a>.</li>
+          <li><strong>Confidentiality:</strong> Your data (name, email, question) is used only to improve this service. Emails and answers are not shared.</li>
+          <li><strong>Consent:</strong> By agreeing, you confirm understanding of the above and accept the terms.</li>
+        </ul>
       </div>
 
-      <form 
-        onSubmit={handleSubmit}
-        style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '1rem' }}
-        noValidate
-      >
-        <div className="form-group" style={{width: '100%'}}>
-          <label htmlFor="firstName">First Name</label>
-          <input
-            id="firstName"
-            className="form-input"
-            type="text"
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            placeholder="Enter your first name"
-            aria-required="true"
-          />
-        </div>
-        <div className="form-group" style={{width: '100%'}}>
-          <label htmlFor="lastName">Last Name</label>
-          <input
-            id="lastName"
-            className="form-input"
-            type="text"
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            placeholder="Enter your last name"
-            aria-required="true"
-          />
-        </div>
-        <div className="form-group" style={{width: '100%'}}>
-          <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            className="form-input"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Enter your email"
-            aria-required="true"
-          />
-        </div>
-        <div className="form-group" style={{width: '100%'}}>
-          <label htmlFor="date">Date</label>
-          <input
-            id="date"
-            className="form-input"
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            aria-required="true"
-          />
-        </div>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <input type="text" placeholder="First Name" value={firstName} onChange={e => setFirstName(e.target.value)} required />
+        <input type="text" placeholder="Last Name" value={lastName} onChange={e => setLastName(e.target.value)} required />
+        <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required />
+        <input type="date" value={date} onChange={e => setDate(e.target.value)} required />
 
-        <div className="checkbox-container">
-          <input 
-            id="agree-checkbox" 
-            type="checkbox" 
-            checked={agreed}
-            onChange={(e) => setAgreed(e.target.checked)} 
-            aria-labelledby="agree-label"
-          />
-          <label id="agree-label" htmlFor="agree-checkbox">I have read and agree to the terms.</label>
-        </div>
+        <label>
+          <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} />
+          I have read and agree to the terms.
+        </label>
 
-        {validationError && <div className="error-message" role="alert" style={{marginTop: '1rem', width: '100%'}}>{validationError}</div>}
-        
+        {validationError && <div className="error-message">{validationError}</div>}
         <button className="btn" type="submit">Open the Portal 🌌</button>
       </form>
     </div>
@@ -137,20 +110,9 @@ interface FormData {
   question: string;
 }
 
-const FormPage = ({ 
-    onProceed, 
-    successMessage,
-    isSubscribed,
-    hasUsedFreeQuery,
-    singleCredit
-}: { 
-    onProceed: (data: FormData) => void; 
-    successMessage?: string | null;
-    isSubscribed: boolean; 
-    hasUsedFreeQuery: boolean;
-    singleCredit: boolean;
-}) => {
+const FormPage = ({ onProceed }: { onProceed: (data: FormData) => void }) => {
   const [question, setQuestion] = useState('');
+  const firstName = localStorage.getItem('userFirstName') || 'there';
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -158,254 +120,104 @@ const FormPage = ({
     onProceed({ question });
   };
 
-  const buttonText = isSubscribed || singleCredit
-    ? 'Reveal My Next Insight'
-    : !hasUsedFreeQuery
-    ? 'Enter the Decoder Portal (First Insight Free)'
-    : 'Unlock Your Hidden Message ($7)';
-
-  const firstName = localStorage.getItem('userFirstName') || '';
-
   return (
     <div className="page-content">
-      {successMessage && <div className="success-message" role="status">{successMessage}</div>}
-      <h2 className="header">Hello {firstName}, what fear or sticky place would you like to bring into the Decoder?</h2>
-      <form onSubmit={handleSubmit} style={{ width: '100%' }}>
-        <div className="form-group">
-          <label htmlFor="question">Your Question</label>
-          <textarea 
-            id="question"
-            className="form-textarea"
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            required
-            aria-required="true"
-          ></textarea>
-        </div>
-        <button className="btn" type="submit">{buttonText}</button>
+      <h2 className="header">Hey {firstName}, what fear or challenge would you like to explore today?</h2>
+      <form onSubmit={handleSubmit}>
+        <textarea
+          value={question}
+          onChange={e => setQuestion(e.target.value)}
+          placeholder="Type your question here..."
+          required
+        />
+        <button className="btn" type="submit">Reveal My Next Insight</button>
       </form>
     </div>
   );
 };
 
-// ------------------ Payment Page ------------------
-const PaymentPage = () => {
-  const baseSuccessUrl = window.location.origin + window.location.pathname;
-  const monthlySuccessUrl = `${baseSuccessUrl}?purchase=monthly`;
-  const singleSuccessUrl = `${baseSuccessUrl}?purchase=single`;
-
-  const stripeMonthlyUrl = `https://buy.stripe.com/00w8wP7HX1Ku6dfadG8Ra00?success_url=${encodeURIComponent(monthlySuccessUrl)}`;
-  const stripeSingleUrl = `https://buy.stripe.com/00w14n3rHah00SV4Tm8Ra01?success_url=${encodeURIComponent(singleSuccessUrl)}`;
-
-  return (
-    <div className="page-content">
-      <h2 className="header">Unlock Your Next Insight</h2>
-      <p>Choose the path that's right for you. Go deeper with a monthly subscription for unlimited insights, or unlock just your next message.</p>
-      <div className="payment-options">
-          <a href={stripeMonthlyUrl} className="payment-btn" target="_top" rel="noopener noreferrer">
-            Reveal Unlimited Messages ($25/mo)
-          </a>
-          <a href={stripeSingleUrl} className="payment-btn secondary" target="_top" rel="noopener noreferrer">
-            Unlock Your Next Insight ($7)
-          </a>
-      </div>
-      <p className="community-note" style={{fontSize: '0.9rem', marginTop: '1.5rem'}}>
-        You can cancel your subscription at any time.
-      </p>
-    </div>
-  );
-};
-
-// ------------------ Decoder Response Page ------------------
-const DecoderResponsePage = ({ 
-    response, 
-    userName, 
-    isHarmful, 
-    isLoading, 
-    error,
-    isSubscribed,
-    onUnlockNext
-}: { 
-    response: DecoderResponse | null, 
-    userName: string, 
-    isHarmful: boolean,
-    isLoading: boolean,
-    error: string | null,
-    isSubscribed: boolean,
-    onUnlockNext: () => void;
-}) => (
-  <div className="page-content">
-    {isLoading ? (
-       <>
-        <h2 className="header">Decoding your insight...</h2>
-        <div className="spinner" style={{width: '50px', height: '50px', borderTopColor: 'var(--accent-color)', borderWidth: '5px'}}></div>
-        <p>Your answer is materializing from the ether. Please wait a moment.</p>
-      </>
-    ) : error ? (
-        <div className="error-message" role="alert">{error}</div>
-    ) : isHarmful ? (
-      <>
-        <h2 className="header">Important Notice</h2>
-        <div className="response-container safety-notice">
-            <p>Your question suggests concerns about your safety or well-being. For your safety, we cannot process this request.</p>
-            <p>If you feel unsafe or in distress, please reach out to a licensed professional or call 911. You can also connect with the <a href="https://www.skool.com/@carina-ghionzoli-7880" target="_blank" rel="noopener noreferrer" style={{color: 'var(--text-color)'}}>BreakFearFindFreedom community</a> for additional support.</p>
-        </div>
-      </>
-    ) : response && (
-      <>
-        <h2 className="header">Your Decoded Insight</h2>
-        <h3 className="response-sub-header">Hello, {userName}. Here is your insight:</h3>
-        <div className="response-container">
-          <div className="response-section">
-            <h3>Insight</h3>
-            <p>{response.insight}</p>
-          </div>
-          <div className="response-section">
-            <h3>Task/Exercise</h3>
-            <p>{response.task}</p>
-          </div>
-          <div className="response-section">
-            <h3>A Question for Reflection</h3>
-            <p><em>{response.thoughtProvokingQuestion}</em></p>
-          </div>
-        </div>
-        
-        <p style={{ marginTop: '1.5rem', marginBottom: '0' }}>Ready for your next insight?</p>
-        
-        <p className="community-note">
-          If you ever feel you need extra support, you can reach out to a licensed professional or connect with the <a href="https://www.skool.com/@carina-ghionzoli-7880" target="_blank" rel="noopener noreferrer" style={{color: 'var(--text-color)'}}>BreakFearFindFreedom community</a>.
-        </p>
-        
-        <button className="btn" onClick={onUnlockNext}>
-            {isSubscribed ? 'Ask Another Question' : 'Unlock Your Next Insight'}
-        </button>
-      </>
-    )}
-  </div>
-);
-
 // ------------------ Main App ------------------
 const App = () => {
   const [page, setPage] = useState<Page>('welcome');
+  const [decoderResponse, setDecoderResponse] = useState<DecoderResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [decoderResponse, setDecoderResponse] = useState<DecoderResponse | null>(null);
-  const [userName, setUserName] = useState('');
-  const [isHarmfulQuestion, setIsHarmfulQuestion] = useState(false);
-  const [paymentSuccessMessage, setPaymentSuccessMessage] = useState<string | null>(null);
-  const [singleCredit, setSingleCredit] = useState(() => localStorage.getItem('singleCredit') === 'true');
 
-  const [isSubscribed, setIsSubscribed] = useState(() => {
-    const subscribed = localStorage.getItem('isSubscribed') === 'true';
-    const expiry = localStorage.getItem('subscriptionExpiry');
-    if (subscribed && expiry) {
-        if (new Date().getTime() > parseInt(expiry, 10)) {
-            localStorage.removeItem('isSubscribed');
-            localStorage.removeItem('subscriptionExpiry');
-            return false;
-        }
-        return true;
-    }
-    return false;
-  });
-  const [hasUsedFreeQuery, setHasUsedFreeQuery] = useState(() => {
-    return localStorage.getItem('hasUsedFreeQuery') === 'true';
-  });
-
-  const onDisclaimerProceed = () => {
-    localStorage.setItem('disclaimerAgreed', 'true');
-    setPage('form');
-  };
+  const onDisclaimerProceed = () => setPage('form');
 
   const processQuestion = async (data: FormData) => {
     setIsLoading(true);
     setError(null);
     setDecoderResponse(null);
-    setIsHarmfulQuestion(false);
-    setUserName(localStorage.getItem('userFirstName') || '');
     setPage('decoderResponse');
 
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+    const firstName = localStorage.getItem('userFirstName') || 'there';
+    const source = localStorage.getItem('userSource') || 'unknown';
 
     try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: `User's First Name: ${localStorage.getItem('userFirstName')}. User's Question: "${data.question}"`,
+        contents: `User's First Name: ${firstName}, Question: "${data.question}", Source: ${source}`,
         config: {
-            systemInstruction: `You are the BreakFear Decoder. Your task is to analyze a user's question for harmful content and provide a supportive, magical, and varied response if it's safe.
-
-First, check the user's question for harmful content like self-harm, violence, abuse, or severe distress. If detected, your entire JSON response must be '{"isHarmful": true}'.
-
-If the question is safe, provide a JSON response with 'isHarmful' set to false, and include 'insight', 'task', and 'thoughtProvokingQuestion'.
-- 'insight': Around 150 words. Be transformative, practical, and unique. Avoid clichés. Address the user by their first name.
-- 'task': A short, actionable "micro-task". Rotate through different categories:
-  - Imagery/Visualization: Guide them to imagine scenes or symbols.
-  - Creative Expression: Invite them to write a sentence, doodle, or create a metaphor.
-  - Perspective Shifts: Offer a reframe (e.g., fear as a teacher).
-  - Micro-Action: Suggest a tiny real-world experiment.
-  - Storytelling: Weave their fear into a short parable.
-  - Body Wisdom: Gentle awareness of posture or breath (use sparingly).
-  - Connection: Suggest a safe conversation or reflection.
-  - Do NOT repeat the same type of task (e.g., mindfulness) in every response. Make it surprising and magical.
-- 'thoughtProvokingQuestion': A single, concise question for reflection.
-
-Your final output must be a valid JSON object.`,
-            responseMimeType: "application/json",
-            responseSchema: {
-                type: Type.OBJECT,
-                properties: {
-                    isHarmful: { type: Type.BOOLEAN, description: "True if the question contains harmful content, otherwise false." },
-                    insight: { type: Type.STRING, description: "The transformative insight for the user. Only present if isHarmful is false." },
-                    task: { type: Type.STRING, description: "A simple, actionable mindfulness task. Only present if isHarmful is false." },
-                    thoughtProvokingQuestion: { type: Type.STRING, description: "A single question for deeper reflection. Only present if isHarmful is false." },
-                },
-                required: ["isHarmful"],
+          systemInstruction: `Analyze question for harmful content and provide JSON {isHarmful, insight, task, thoughtProvokingQuestion}.`,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              isHarmful: { type: Type.BOOLEAN },
+              insight: { type: Type.STRING },
+              task: { type: Type.STRING },
+              thoughtProvokingQuestion: { type: Type.STRING },
             },
-        },
+            required: ['isHarmful']
+          }
+        }
       });
 
       const result = JSON.parse(response.text);
-      
+
       if (result.isHarmful) {
-        setIsHarmfulQuestion(true);
-        setDecoderResponse(null);
-      } else if (result.insight && result.task && result.thoughtProvokingQuestion) {
-        setIsHarmfulQuestion(false);
+        setError('Your question suggests safety concerns. Please reach out to a professional.');
+      } else {
         setDecoderResponse({
           insight: result.insight,
           task: result.task,
-          thoughtProvokingQuestion: result.thoughtProvokingQuestion,
+          thoughtProvokingQuestion: result.thoughtProvokingQuestion
         });
-      } else {
-         setError("The Decoder returned an incomplete response. Please try again.");
       }
-
-    } catch (e) {
-      if (e instanceof Error) {
-        setError(`An error occurred: ${e.message}. Please check the console for more details.`);
-      } else {
-        setError("An unknown error occurred while decoding your question.");
-      }
+    } catch (err) {
+      setError('An error occurred while decoding your question. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    const processRedirect = () => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const purchaseType = urlParams.get('purchase');
+  return (
+    <div>
+      {page === 'welcome' && <WelcomePage onProceed={() => setPage('disclaimer')} />}
+      {page === 'disclaimer' && <DisclaimerPage onProceed={onDisclaimerProceed} />}
+      {page === 'form' && <FormPage onProceed={processQuestion} />}
+      {page === 'decoderResponse' && (
+        <div className="page-content">
+          {isLoading && <p>Decoding your insight...</p>}
+          {error && <div className="error-message">{error}</div>}
+          {decoderResponse && (
+            <div>
+              <h3>Your Insight</h3>
+              <p>{decoderResponse.insight}</p>
+              <h3>Task</h3>
+              <p>{decoderResponse.task}</p>
+              <h3>Reflection Question</h3>
+              <p>{decoderResponse.thoughtProvokingQuestion}</p>
+              <button className="btn" onClick={() => setPage('form')}>Ask Another Question</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
-        if (!purchaseType) return;
-        
-        window.history.replaceState({}, document.title, window.location.pathname);
-        
-        if (purchaseType === 'single') {
-            localStorage.setItem('singleCredit', 'true');
-            setSingleCredit(true);
-            setPaymentSuccessMessage("Payment successful! You may now ask your next question.");
-            setPage('form');
-            setTimeout(() => setPaymentSuccessMessage(null), 6000);
-
-        } else if (purchaseType === 'monthly') {
-            const expiry = new Date().get
+const container = document.getElementById('root');
+if (container) createRoot(container).render(<App />);
