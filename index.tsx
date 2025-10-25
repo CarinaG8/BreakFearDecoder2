@@ -5,10 +5,98 @@ import { GoogleGenAI, Type } from '@google/genai';
 type Page = 'welcome' | 'disclaimer' | 'form' | 'payment' | 'decoderResponse';
 
 interface DecoderResponse {
-  insight: string;
-  task: string;
-  thoughtProvokingQuestion: string;
+  reflection: string;
+  reframe: string;
+  mirrorPoint: string;
+  shiftMove: string;
 }
+
+const craftConcise = (text: string, maxSentences = 2) => {
+  const cleaned = text.replace(/\s+/g, ' ').trim();
+  if (!cleaned) return cleaned;
+
+  const sentences = cleaned.split(/(?<=[.!?])\s+/).filter(Boolean);
+  const uniqueSentences: string[] = [];
+
+  for (const sentence of sentences) {
+    const trimmed = sentence.trim();
+    if (!trimmed) continue;
+    const normalized = trimmed.toLowerCase();
+    if (!uniqueSentences.some(existing => existing.toLowerCase() === normalized)) {
+      uniqueSentences.push(trimmed);
+    }
+    if (uniqueSentences.length >= maxSentences) break;
+  }
+
+  let condensed = uniqueSentences.slice(0, maxSentences).join(' ');
+  if (condensed.length > 280) {
+    condensed = `${condensed.slice(0, 277).trimEnd().replace(/[.,!?;:]?$/, '')}...`;
+  }
+
+  return condensed;
+};
+
+const removeForbiddenCharacters = (text: string) =>
+  text.replace(/[:\-&]/g, ' ').replace(/\s+/g, ' ').trim();
+
+const replaceSingularPronouns = (text: string) =>
+  text
+    .replace(/\bI\b/gi, 'we')
+    .replace(/\bme\b/gi, 'us')
+    .replace(/\bmy\b/gi, 'our')
+    .replace(/\bmine\b/gi, 'ours');
+
+const removeBannedWords = (text: string) => {
+  const banned = ['unleash', 'ignite', 'dont', 'isnt', 'most'];
+  let output = text;
+  for (const word of banned) {
+    const pattern = new RegExp(`\\b${word}\\b`, 'gi');
+    output = output.replace(pattern, '').replace(/\s+/g, ' ').trim();
+  }
+  return output;
+};
+
+const removeTechSpeak = (text: string) => {
+  const banned = ['AI', 'A.I.', 'technology', 'platform', 'software', 'algorithm', 'app'];
+  let output = text;
+  for (const word of banned) {
+    const pattern = new RegExp(`\\b${word}\\b`, 'gi');
+    output = output.replace(pattern, '').replace(/\s+/g, ' ').trim();
+  }
+  return output;
+};
+
+const limitWords = (text: string, maxWords: number) => {
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length <= maxWords) return text.trim();
+  return `${words.slice(0, maxWords).join(' ')}...`;
+};
+
+const baseSanitize = (text: string) => {
+  let sanitized = removeForbiddenCharacters(text);
+  sanitized = replaceSingularPronouns(sanitized);
+  sanitized = removeBannedWords(sanitized);
+  sanitized = removeTechSpeak(sanitized);
+  return sanitized.trim();
+};
+
+const sanitizeReflection = (text: string) => limitWords(baseSanitize(text), 30);
+
+const sanitizeReframe = (text: string) => limitWords(baseSanitize(text), 30);
+
+const sanitizeMirrorPoint = (text: string) => limitWords(baseSanitize(text), 25);
+
+const SHIFT_MOVE_SUFFIX = 'Stay aware and safe as you move. Always trust your intuition first.';
+
+const sanitizeShiftMove = (text: string) => {
+  let sanitized = baseSanitize(text);
+  if (sanitized.toLowerCase().endsWith(SHIFT_MOVE_SUFFIX.toLowerCase())) {
+    sanitized = sanitized.slice(0, sanitized.length - SHIFT_MOVE_SUFFIX.length).trim();
+  }
+  sanitized = limitWords(sanitized, 28);
+  const needsVerb = sanitized ? sanitized : 'Choose one kind micro action today.';
+  return `${needsVerb.trim()} ${SHIFT_MOVE_SUFFIX}`.trim();
+};
 
 // ------------------ Welcome Page ------------------
 const WelcomePage = ({ onProceed }: { onProceed: () => void }) => (
@@ -112,7 +200,6 @@ interface FormData {
 
 const FormPage = ({ onProceed }: { onProceed: (data: FormData) => void }) => {
   const [question, setQuestion] = useState('');
-  const firstName = localStorage.getItem('userFirstName') || 'there';
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -122,7 +209,7 @@ const FormPage = ({ onProceed }: { onProceed: (data: FormData) => void }) => {
 
   return (
     <div className="page-content">
-      <h2 className="header">Hey {firstName}, what fear or challenge would you like to explore today?</h2>
+      <h2 className="header">What fear or challenge would you like to explore today?</h2>
       <form onSubmit={handleSubmit}>
         <textarea
           value={question}
@@ -137,6 +224,25 @@ const FormPage = ({ onProceed }: { onProceed: (data: FormData) => void }) => {
 };
 
 // ------------------ Main App ------------------
+const CRISIS_KEYWORDS = [
+  'suicide',
+  'kill myself',
+  'self-harm',
+  'self harm',
+  'hurt myself',
+  'end my life',
+  'take my life',
+  'die',
+  'overdose',
+  'kill someone',
+  'harm someone',
+];
+
+const containsCrisisLanguage = (question: string) => {
+  const normalized = question.toLowerCase();
+  return CRISIS_KEYWORDS.some(keyword => normalized.includes(keyword));
+};
+
 const App = () => {
   const [page, setPage] = useState<Page>('welcome');
   const [decoderResponse, setDecoderResponse] = useState<DecoderResponse | null>(null);
@@ -146,10 +252,18 @@ const App = () => {
   const onDisclaimerProceed = () => setPage('form');
 
   const processQuestion = async (data: FormData) => {
-    setIsLoading(true);
     setError(null);
     setDecoderResponse(null);
     setPage('decoderResponse');
+    setIsLoading(true);
+
+    if (containsCrisisLanguage(data.question)) {
+      setError(
+        'We detected language that may indicate immediate danger. Please contact emergency services or a licensed professional for support.'
+      );
+      setIsLoading(false);
+      return;
+    }
 
     const firstName = localStorage.getItem('userFirstName') || 'there';
     const source = localStorage.getItem('userSource') || 'unknown';
@@ -160,15 +274,16 @@ const App = () => {
         model: 'gemini-2.5-flash',
         contents: `User's First Name: ${firstName}, Question: "${data.question}", Source: ${source}`,
         config: {
-          systemInstruction: `Analyze question for harmful content and provide JSON {isHarmful, insight, task, thoughtProvokingQuestion}.`,
+          systemInstruction: `You are BreakFearDecoder. Detect crisis language; whenever you sense immediate danger set isHarmful true. If safe craft Reflection Reframe Mirror Point and Shift Move. Each stays within twenty to thirty words, all together between eighty and one hundred twenty words. Speak as a warm grounded human partner. Use only we voice. Stay poetic yet practical. Reveal love as the foundation. No repetition loops. No affirmations. No journaling or meditation prompts. Tasks must feel imaginative and embodied. Avoid stock phrasing. Never mention tools or technology. Avoid negation where possible. Never use the words unleash ignite dont isnt most. Never use colons dashes or ampersands. Shift Move must end with the line 'Stay aware and safe as you move. Always trust your intuition first.' Deliver JSON {isHarmful, reflection, reframe, mirrorPoint, shiftMove}.`,
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
             properties: {
               isHarmful: { type: Type.BOOLEAN },
-              insight: { type: Type.STRING },
-              task: { type: Type.STRING },
-              thoughtProvokingQuestion: { type: Type.STRING },
+              reflection: { type: Type.STRING },
+              reframe: { type: Type.STRING },
+              mirrorPoint: { type: Type.STRING },
+              shiftMove: { type: Type.STRING },
             },
             required: ['isHarmful']
           }
@@ -177,14 +292,23 @@ const App = () => {
 
       const result = JSON.parse(response.text);
 
-      if (result.isHarmful) {
+      const isHarmful = result?.isHarmful === true;
+      const reflection = typeof result?.reflection === 'string' ? result.reflection : null;
+      const reframe = typeof result?.reframe === 'string' ? result.reframe : null;
+      const mirrorPoint = typeof result?.mirrorPoint === 'string' ? result.mirrorPoint : null;
+      const shiftMove = typeof result?.shiftMove === 'string' ? result.shiftMove : null;
+
+      if (isHarmful) {
         setError('Your question suggests safety concerns. Please reach out to a professional.');
-      } else {
+      } else if (reflection && reframe && mirrorPoint && shiftMove) {
         setDecoderResponse({
-          insight: result.insight,
-          task: result.task,
-          thoughtProvokingQuestion: result.thoughtProvokingQuestion
+          reflection: sanitizeReflection(craftConcise(reflection, 2)),
+          reframe: sanitizeReframe(craftConcise(reframe, 2)),
+          mirrorPoint: sanitizeMirrorPoint(craftConcise(mirrorPoint, 2)),
+          shiftMove: sanitizeShiftMove(craftConcise(shiftMove, 2))
         });
+      } else {
+        setError('We were unable to generate a complete response. Please try asking your question again.');
       }
     } catch (err) {
       setError('An error occurred while decoding your question. Please try again.');
@@ -204,12 +328,14 @@ const App = () => {
           {error && <div className="error-message">{error}</div>}
           {decoderResponse && (
             <div>
-              <h3>Your Insight</h3>
-              <p>{decoderResponse.insight}</p>
-              <h3>Task</h3>
-              <p>{decoderResponse.task}</p>
-              <h3>Reflection Question</h3>
-              <p>{decoderResponse.thoughtProvokingQuestion}</p>
+              <h3>Reflection</h3>
+              <p>{decoderResponse.reflection}</p>
+              <h3>Reframe</h3>
+              <p>{decoderResponse.reframe}</p>
+              <h3>Mirror Point</h3>
+              <p>{decoderResponse.mirrorPoint}</p>
+              <h3>Shift Move</h3>
+              <p>{decoderResponse.shiftMove}</p>
               <button className="btn" onClick={() => setPage('form')}>Ask Another Question</button>
             </div>
           )}
