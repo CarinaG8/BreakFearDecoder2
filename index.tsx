@@ -220,7 +220,7 @@ const EntryPage = () => {
       `}</style>
       <div className="entry-content">
         <header className="entry-header">
-          <h1>BreakFearDecoder</h1>
+          <h1>Break Fear Decoder</h1>
           <p>When fear speaks, it reveals the next door.</p>
         </header>
         <div className="scene">
@@ -228,7 +228,7 @@ const EntryPage = () => {
             className="door-wrapper"
             onClick={handleDoorActivation}
             role="button"
-            aria-label="Open the BreakFearDecoder door"
+            aria-label="Open the Break Fear Decoder door"
             tabIndex={0}
             onKeyDown={handleKeyDown}
           >
@@ -236,7 +236,7 @@ const EntryPage = () => {
             <div className={doorClassName}>
               <img src="/door.jpg" alt="Black door" />
             </div>
-            <span className="key-sign">Turn the key</span>
+            <span className="key-sign">Turn the</span>
             <img className={keyClassName} src="/key.png" alt="Key icon" />
           </div>
         </div>
