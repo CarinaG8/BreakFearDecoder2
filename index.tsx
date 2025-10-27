@@ -31,6 +31,8 @@ const EntryPage = () => {
       setPhase('door');
       setLight('warm');
 
+      const navTimer = window.setTimeout(navigateToDisclaimer, 700);
+      timers.current.push(navTimer);
       const navigateTimer = window.setTimeout(navigateToDisclaimer, 700);
       timers.current.push(navigateTimer);
     }, 300);
@@ -64,6 +66,7 @@ const EntryPage = () => {
 
         body {
           margin: 0;
+          background: radial-gradient(circle at 50% 30%, #2e0a54 0%, #1d0637 45%, #06010d 100%);
           background: radial-gradient(circle at 50% 35%, #2d0d54 0%, #160425 42%, #030005 100%);
           color: #f5f0ff;
           font-family: 'Segoe UI', 'Trebuchet MS', sans-serif;
